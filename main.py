@@ -11,22 +11,25 @@ from sklearn.metrics import accuracy_score #, recall_score, precision_score
 global mo_hinh_tot_nhat
 
 # Đọc file dữ liệu
-data = pandas.read_csv('gianlanbaohiem.csv')
+try:
+    data = pandas.read_csv('BThetmon/gianlanbaohiem.csv')
+except:
+    data = pandas.read_csv('gianlanbaohiem.csv')
 
 # Lấy ra tên tất cả các thuộc tính
 all_label = data.columns.values
 all_label = all_label.tolist()
 
 # Chọn các thuộc tính cần dùng
-all_label = all_label[:15]
+all_label = all_label[:25]
 
 # Encode dữ liệu
 data = data.apply(LabelEncoder().fit_transform)
 
 # Tách dữ liệu thành tập train và test
 train, test = train_test_split(data, test_size=0.3, shuffle=True)
-xTRAIN, yTRAIN = numpy.array(train.iloc[:,:15]), numpy.array(train.iloc[:,len(data.iloc[0])-1])
-XTEST, YTEST = test.iloc[:,:15], test.iloc[:,len(data.iloc[0])-1]
+xTRAIN, yTRAIN = numpy.array(train.iloc[:,:25]), numpy.array(train.iloc[:,len(data.iloc[0])-1])
+XTEST, YTEST = test.iloc[:,:25], test.iloc[:,len(data.iloc[0])-1]
 
 # Khai báo sử dụng k-fold
 kfold = KFold(10, shuffle=True)
@@ -40,8 +43,8 @@ for KFtrain, validate in kfold.split(xTRAIN, yTRAIN):
     xValidate, yValidate = xTRAIN[KFtrain], yTRAIN[KFtrain]
 
     # Khởi tạo mô hình
-    ID3_kfold = DecisionTreeClassifier(criterion='entropy', max_depth=10, splitter='best')
-    CART_kfold = DecisionTreeClassifier(criterion='gini', max_depth=10, splitter='best')
+    ID3_kfold = DecisionTreeClassifier(criterion='entropy', max_depth=20, splitter='best')
+    CART_kfold = DecisionTreeClassifier(criterion='gini', max_depth=20, splitter='best')
 
     # Dùng cho chủ đề 5
     # svm = SVC(kernel='poly',)
