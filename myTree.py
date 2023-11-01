@@ -100,7 +100,15 @@ class MyDecisionTreeClassifier():
                 newData.append(record)
         else:
             newData = data
-        return list(map(lambda x: self.tree.predict(x), newData))
+        
+        predict_result = []
+        for i in newData:
+            try:
+                predict_result.extend(self.tree.predict(i))
+            except:
+                predict_result.extend(['err'])
+
+        return predict_result
 
 
 #####
@@ -148,14 +156,10 @@ xt, yt = test[:,:-1], test[:,-1]
 mytree = MyDecisionTreeClassifier(attributes=atts, x_train=x, y_train=y)
 mytree.fit()
 
-pred = []
-for i in xt:
-    try:
-        pred.extend(mytree.predict([i]))
-    except:
-        pred.extend(['err'])
+pred = mytree.predict(xt)
 # print(pred)
 print('err:', pred.count('err'))
+# print(pred)
 
 count = 0
 for i in range(len(pred)):
