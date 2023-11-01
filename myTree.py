@@ -2,10 +2,12 @@ import math
 import pandas
 from sklearn.model_selection import train_test_split
 
+
 class Node:
-    def __init__(self, name: str, attributes = {}) -> None:
+    def __init__(self, name: str, attributes={}) -> None:
         self.name = name
         self.attributes = attributes
+
     def predict(self, data):
         if len(self.attributes) == 0:
             return self.name
@@ -15,11 +17,78 @@ class Node:
         next_node = self.attributes[data_att_val]
         result = next_node.predict(reduceData)
         return result
-    
+
+
 class MyDecisionTreeClassifier():
+    '''Idea for this tree
+
+    X_input
+    -------
+    example raw data:
+    >>> id      outlook     temperature     humidity        wind        play
+    >>> 1       sunny       hot             high            weak        no
+    >>> 2       sunny       hot             high            strong      no
+    >>> 3       overcast    hot             high            weak        yes
+    >>> 4       rainy       mild            high            weak        yes
+    >>> 5       rainy       cool            normal          weak        yes
+    >>> 6       rainy       cool            normal          strong      no
+    >>> 7       overcast    cool            normal          strong      yes
+    >>> 8       sunny       mild            high            weak        no
+    >>> 9       sunny       hot             normal          weak        yes
+    >>> 10      rainy       mild            normal          weak        yes
+    >>> 11      sunny       mild            normal          strong      yes
+    >>> 12      overcast    mild            high            strong      yes
+    >>> 13      overcast    hot             normal          weak        yes
+    >>> 14      rainy       mild             high           strong      no
+
+    is converted into:
+
+    >>> [{'outlook': 'sunny', 'temp': 'hot', 'humidity': 'high', 'wind': 'weak'},           ##no
+    >>> {'outlook': 'sunny', 'temp': 'hot', 'humidity': 'high', 'wind': 'strong'},          ##no
+    >>> {'outlook': 'overcast', 'temp': 'hot', 'humidity': 'high', 'wind': 'weak'},         ##yes
+    >>> {'outlook': 'rainy', 'temp': 'mild', 'humidity': 'high', 'wind': 'weak'},           ##yes
+    >>> {'outlook': 'rainy', 'temp': 'cool', 'humidity': 'normal', 'wind': 'weak'},         ##yes
+    >>> {'outlook': 'rainy', 'temp': 'cool', 'humidity': 'normal', 'wind': 'strong'},       ##no
+    >>> {'outlook': 'overcast', 'temp': 'cool', 'humidity': 'normal', 'wind': 'strong'},    ##yes
+    >>> {'outlook': 'sunny', 'temp': 'mild', 'humidity': 'high', 'wind': 'weak'},           ##no
+    >>> {'outlook': 'sunny', 'temp': 'cool', 'humidity': 'normal', 'wind': 'weak'},         ##yes
+    >>> {'outlook': 'rainy', 'temp': 'mild', 'humidity': 'normal', 'wind': 'weak'},         ##yes
+    >>> {'outlook': 'sunny', 'temp': 'mild', 'humidity': 'normal', 'wind': 'strong'},       ##yes
+    >>> {'outlook': 'overcast', 'temp': 'mild', 'humidity': 'high', 'wind': 'strong'},      ##yes
+    >>> {'outlook': 'overcast', 'temp': 'hot', 'humidity': 'normal', 'wind': 'weak'},       ##yes
+    >>> {'outlook': 'rainy', 'temp': 'mild', 'humidity': 'high', 'wind': 'strong'}]         ##no
+
+    [outlook, temperature, humidity, wind]
+    --------------------------------------
+    is attributes, their values is props
+
+    play
+    ----
+    is target or yClass
+
+    Example tree
+    ------------
+    >>> Node('outlook', 
+    >>>         {
+    >>>         'sunny': Node('humidity', 
+    >>>                             {'high': Node('no', {}), 
+    >>>                             'normal': Node('yes', {})
+    >>>                             }
+    >>>                         ), 
+    >>>         'overcast': Node('yes', {}), 
+    >>>         'rainy': Node('wind', 
+    >>>                             {'weak': Node('yes', {}), 
+    >>>                             'strong': Node('no', {})
+    >>>                             }
+    >>>                         )
+    >>>         }
+    >>>     )
+    '''
+
     def __init__(self, attributes: list, x_train, y_train, criterion='entropy') -> None:
         if len(attributes) != len(x_train[0]):
-            raise ValueError(f'Parameters is not valid! size of attributes ({len(attributes)}) is different from number of data input ({len(x_train[0])})')
+            raise ValueError(
+                f'Parameters is not valid! size of attributes ({len(attributes)}) is different from number of data input ({len(x_train[0])})')
         if criterion not in ['entropy', 'gini']:
             raise ValueError('Invalid value for paramater criterion!')
         self.attributes = attributes
@@ -35,7 +104,7 @@ class MyDecisionTreeClassifier():
         else:
             self.xTrain = x_train
 
-    ## Hàm tính giá trị Infomation gain hoặc Gini index
+    # Hàm tính giá trị Infomation gain hoặc Gini index
     def point(self, data, yClass, attribute_name):
         props = set(map(lambda x: x[attribute_name], data))
         Point = 0 if self.criterion == 'entropy' else 1
@@ -50,11 +119,14 @@ class MyDecisionTreeClassifier():
             prop_point = 0
             for prop_class in prop_classes:
                 count_class = prop_targets.count(prop_class)
-                prop_point += -(count_class/total_prop_target)*math.log(count_class/total_prop_target) if self.criterion == 'entropy' else (count_class/total_prop_target)**2
-            Point += total_prop_target/len(data)*prop_point if self.criterion == 'entropy' else -total_prop_target/len(data)*prop_point
+                prop_point += -(count_class/total_prop_target)*math.log(count_class /
+                                                                        total_prop_target) if self.criterion == 'entropy' else (count_class/total_prop_target)**2
+            Point += total_prop_target / \
+                len(data)*prop_point if self.criterion == 'entropy' else - \
+                total_prop_target/len(data)*prop_point
         return Point
 
-    ## Hàm xây dựng cây quyết định
+    # Hàm xây dựng cây quyết định
     def buildTree(self, xData, yClass, attributes: list):
         target_list = list(set(yClass))
         if len(target_list) == 1:
@@ -65,11 +137,11 @@ class MyDecisionTreeClassifier():
                 count.append(yClass.count(target))
             target_max_index = count.index(max(count))
             return Node(str(target_list[target_max_index]))
-        
+
         Point = []
         for attribute_name in attributes:
             Point.append(self.point(xData, yClass, attribute_name))
-        
+
         min_point_attribute_name = attributes[Point.index(min(Point))]
         list_att_props = set(map(lambda x: x[min_point_attribute_name], xData))
 
@@ -84,9 +156,10 @@ class MyDecisionTreeClassifier():
                 if val[min_point_attribute_name] == att_prop:
                     prop_data.append(val)
                     att_prop_targets.append(yClass[index])
-            att_prop_nodes[str(att_prop)] = self.buildTree(prop_data, att_prop_targets, attributesReduce)
+            att_prop_nodes[str(att_prop)] = self.buildTree(
+                prop_data, att_prop_targets, attributesReduce)
         return Node(min_point_attribute_name, att_prop_nodes)
-    
+
     def fit(self):
         self.tree = self.buildTree(self.xTrain, self.yTrain, self.attributes)
 
@@ -100,7 +173,7 @@ class MyDecisionTreeClassifier():
                 newData.append(record)
         else:
             newData = data
-        
+
         predict_result = []
         for i in newData:
             try:
@@ -111,7 +184,7 @@ class MyDecisionTreeClassifier():
         return predict_result
 
 
-#####
+########
 try:
     data = pandas.read_csv('BThetmon/gianlanbaohiem.csv')
 except:
@@ -129,10 +202,11 @@ data_np = data.values
 atts = columns[:len(columns)-1]
 
 # Rời rạc dữ liệu
-ENCODE_LABELS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
+ENCODE_LABELS = ['one', 'two', 'three', 'four',
+                 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 enum_cols = enumerate(columns)
 for (i, col) in enum_cols:
-    if(str(type(data_np[0,i])) != "<class 'str'>"):
+    if (str(type(data_np[0, i])) != "<class 'str'>"):
         min_val = min(data[col].values)
         max_val = max(data[col].values)
         unique_count = len(set(data[col]))
@@ -140,7 +214,8 @@ for (i, col) in enum_cols:
         if unique_count > 10:
             split_range = []
             for split_index in range(10):
-                split_range.append(min_val + ((max_val-min_val)/10*(split_index)))
+                split_range.append(
+                    min_val + ((max_val-min_val)/10*(split_index)))
             split_range.append(max_val+1)
             # print(split_range)
             for val in range(len(data[col].values)):
@@ -150,8 +225,8 @@ for (i, col) in enum_cols:
                         break
 
 train, test = train_test_split(data_np, test_size=0.3, shuffle=True)
-x, y = train[:,:-1], train[:,-1]
-xt, yt = test[:,:-1], test[:,-1]
+x, y = train[:, :-1], train[:, -1]
+xt, yt = test[:, :-1], test[:, -1]
 
 mytree = MyDecisionTreeClassifier(attributes=atts, x_train=x, y_train=y)
 mytree.fit()
