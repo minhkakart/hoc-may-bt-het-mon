@@ -3,24 +3,26 @@ import pandas
 from sklearn.model_selection import train_test_split
 
 class Node:
-    def __init__(self, label: str, attributes = {}) -> None:
-        self.label = label
+    def __init__(self, name: str, attributes = {}) -> None:
+        self.name = name
         self.attributes = attributes
     def predict(self, data):
         if len(self.attributes) == 0:
-            return self.label
+            return self.name
         reduceData = dict(data)
-        del reduceData[self.label]
-        res = self.attributes[data[self.label]].predict(reduceData)
-        return res
+        del reduceData[self.name]
+        data_att_val = data[self.name]
+        next_node = self.attributes[data_att_val]
+        result = next_node.predict(reduceData)
+        return result
     
 class MyDecisionTreeClassifier():
-    def __init__(self, title: list, x_train, y_train, criterion='entropy') -> None:
-        if len(title) != len(x_train[0]):
-            raise ValueError('Parameters is not valid! size of title ({0}) different from number of data input ({1})'.format(len(title),len(x_train[0])))
+    def __init__(self, attributes: list, x_train, y_train, criterion='entropy') -> None:
+        if len(attributes) != len(x_train[0]):
+            raise ValueError(f'Parameters is not valid! size of attributes ({len(attributes)}) is different from number of data input ({len(x_train[0])})')
         if criterion not in ['entropy', 'gini']:
             raise ValueError('Invalid value for paramater criterion!')
-        self.title = title
+        self.attributes = attributes
         self.criterion = criterion
         self.yTrain = y_train
         self.xTrain = []
@@ -28,61 +30,65 @@ class MyDecisionTreeClassifier():
             for i in x_train:
                 record = {}
                 for index, val in enumerate(i):
-                    record[str(self.title[index])] = str(val)
+                    record[str(self.attributes[index])] = str(val)
                 self.xTrain.append(record)
         else:
             self.xTrain = x_train
 
     ## Hàm tính giá trị Infomation gain hoặc Gini index
-    def point(self, data, className, title):
-        att = set(map(lambda x: x[title], data))
+    def point(self, data, yClass, attribute_name):
+        props = set(map(lambda x: x[attribute_name], data))
         Point = 0 if self.criterion == 'entropy' else 1
-        for i in att:
-            yclass = []
+        for i in props:
+            prop_targets = []
             for index, val in enumerate(data):
-                if val[title] == i:
-                    yclass.append(className[index])
-            numberOfClass = set(yclass)
-            totalClass = len(yclass)
-            subPoint = 0
-            for j in numberOfClass:
-                count = yclass.count(j)
-                subPoint += -(count/totalClass)*math.log(count/totalClass) if self.criterion == 'entropy' else (count/totalClass)**2
-            Point += totalClass/len(data)*subPoint if self.criterion == 'entropy' else -totalClass/len(data)*subPoint
+                if val[attribute_name] == i:
+                    prop_targets.append(yClass[index])
+            prop_classes = set(prop_targets)
+            total_prop_target = len(prop_targets)
+
+            prop_point = 0
+            for prop_class in prop_classes:
+                count_class = prop_targets.count(prop_class)
+                prop_point += -(count_class/total_prop_target)*math.log(count_class/total_prop_target) if self.criterion == 'entropy' else (count_class/total_prop_target)**2
+            Point += total_prop_target/len(data)*prop_point if self.criterion == 'entropy' else -total_prop_target/len(data)*prop_point
         return Point
 
     ## Hàm xây dựng cây quyết định
-    def buildTree(self, xData, yClass, labels: list):
-        className = list(set(yClass))
-        if len(className) == 1:
-            return Node(className[0])
-        if len(labels) == 0:
+    def buildTree(self, xData, yClass, attributes: list):
+        target_list = list(set(yClass))
+        if len(target_list) == 1:
+            return Node(target_list[0])
+        if len(attributes) == 0:
             count = []
-            for i in className:
-                count.append(yClass.count(i))
-            return Node(str(className[count.index(max(count))]))
+            for target in target_list:
+                count.append(yClass.count(target))
+            target_max_index = count.index(max(count))
+            return Node(str(target_list[target_max_index]))
         
         Point = []
-        for label in labels:
-            Point.append(self.point(xData, yClass, label))
+        for attribute_name in attributes:
+            Point.append(self.point(xData, yClass, attribute_name))
         
-        minPointStr = labels.__getitem__(Point.index(min(Point)))
-        listAtt = set(map(lambda x: x[minPointStr], xData))
-        nodeAtt = {}
-        labelsReduce = list(labels)
-        labelsReduce.remove(minPointStr)
-        for i in listAtt:
-            subData = []
-            subLabels = []
+        min_point_attribute_name = attributes[Point.index(min(Point))]
+        list_att_props = set(map(lambda x: x[min_point_attribute_name], xData))
+
+        att_prop_nodes = {}
+        attributesReduce = list(attributes)
+        attributesReduce.remove(min_point_attribute_name)
+
+        for att_prop in list_att_props:
+            prop_data = []
+            att_prop_targets = []
             for index, val in enumerate(xData):
-                if val[minPointStr] == i:
-                    subData.append(val)
-                    subLabels.append(yClass[index])
-            nodeAtt[i] = self.buildTree(subData, subLabels, labelsReduce)
-        return Node(minPointStr, nodeAtt)
+                if val[min_point_attribute_name] == att_prop:
+                    prop_data.append(val)
+                    att_prop_targets.append(yClass[index])
+            att_prop_nodes[str(att_prop)] = self.buildTree(prop_data, att_prop_targets, attributesReduce)
+        return Node(min_point_attribute_name, att_prop_nodes)
     
     def fit(self):
-        self.tree = self.buildTree(self.xTrain, self.yTrain, self.title)
+        self.tree = self.buildTree(self.xTrain, self.yTrain, self.attributes)
 
     def predict(self, data: list):
         if not str(type(data[0])) == "<class 'dict'>":
@@ -90,12 +96,14 @@ class MyDecisionTreeClassifier():
             for i in data:
                 record = {}
                 for index, val in enumerate(i):
-                    record[(str(self.title[index]))] = val
+                    record[(str(self.attributes[index]))] = val
                 newData.append(record)
         else:
             newData = data
         return list(map(lambda x: self.tree.predict(x), newData))
 
+
+#####
 try:
     data = pandas.read_csv('BThetmon/gianlanbaohiem.csv')
 except:
@@ -112,10 +120,9 @@ columns = (data.columns.values)
 data_np = data.values
 atts = columns[:len(columns)-1]
 
+# Rời rạc dữ liệu
 ENCODE_LABELS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
-
 enum_cols = enumerate(columns)
-
 for (i, col) in enum_cols:
     if(str(type(data_np[0,i])) != "<class 'str'>"):
         min_val = min(data[col].values)
@@ -134,11 +141,11 @@ for (i, col) in enum_cols:
                         data_np[val, i] = ENCODE_LABELS[label_index]
                         break
 
-train, test = train_test_split(data_np, train_size=0.7, test_size=0.3)
+train, test = train_test_split(data_np, test_size=0.3, shuffle=True)
 x, y = train[:,:-1], train[:,-1]
 xt, yt = test[:,:-1], test[:,-1]
 
-mytree = MyDecisionTreeClassifier(title=atts, x_train=x, y_train=y)
+mytree = MyDecisionTreeClassifier(attributes=atts, x_train=x, y_train=y)
 mytree.fit()
 
 pred = []
