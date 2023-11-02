@@ -118,7 +118,7 @@ with dpg.window(tag='cua_so_chinh'):
 
 # Các thủ tục của dearpygui
 dpg.set_global_font_scale(2)
-dpg.create_viewport(title='Credit Card Dataset for Clustering', width=1280, height=720, x_pos=360, y_pos=120)
+dpg.create_viewport(title='Fraud detecting', width=1280, height=720, x_pos=360, y_pos=120)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 dpg.set_primary_window("cua_so_chinh", True)
