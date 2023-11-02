@@ -117,7 +117,7 @@ class MyDecisionTreeClassifier():
     def point(self, data, yClass, attribute_name):
 
         props = set(map(lambda x: x[attribute_name], data))     # Tạo danh sách tập các giá trị của attribute_name
-        Point = 0 if self.criterion == 'entropy' else 1         # Khởi tạo điểm ban đầu
+        Point = 0                                               # Khởi tạo điểm ban đầu
 
         ## Tính điểm của từng giá trị rồi cộng vào Point
         for i in props:
@@ -131,12 +131,12 @@ class MyDecisionTreeClassifier():
             prop_classes = set(prop_targets)            # Tạo tập các lớp của prop
             total_prop_target = len(prop_targets)       # Lấy số lượng 
 
-            prop_point = 0                              # Khởi tạo điểm entropy hoặc gini
+            prop_point = 0 if self.criterion == 'entropy' else 1      # Khởi tạo điểm entropy hoặc gini
             # Tính entropy hoặc gini theo xác xuất của mỗi lớp
             for prop_class in prop_classes:
                 count_class = prop_targets.count(prop_class)
-                prop_point += -(count_class/total_prop_target)*log(count_class/total_prop_target) if self.criterion == 'entropy' else (count_class/total_prop_target)**2
-            Point += (total_prop_target/len(data))*prop_point if self.criterion == 'entropy' else - (total_prop_target/len(data))*prop_point
+                prop_point += -(count_class/total_prop_target)*log(count_class/total_prop_target) if self.criterion == 'entropy' else -(count_class/total_prop_target)**2
+            Point += (total_prop_target/len(data))*prop_point if self.criterion == 'entropy' else (total_prop_target/len(data))*prop_point
         
         return Point        # Trả về H(x,S)
 
@@ -272,7 +272,7 @@ train, test = train_test_split(data_np, test_size=0.3, shuffle=True)
 x, y = train[:, :-1], train[:, -1]
 xt, yt = test[:, :-1], test[:, -1]
 
-mytree = MyDecisionTreeClassifier(attributes=atts, x_train=x, y_train=y, max_depth=5)
+mytree = MyDecisionTreeClassifier(attributes=atts, x_train=x, y_train=y, max_depth=15, criterion='gini')
 mytree.fit()
 
 pred = mytree.predict(xt)
