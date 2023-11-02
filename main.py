@@ -46,13 +46,6 @@ for KFtrain, validate in kfold.split(xTRAIN, yTRAIN):
     ID3_kfold = DecisionTreeClassifier(criterion='entropy', max_depth=20, splitter='best')
     CART_kfold = DecisionTreeClassifier(criterion='gini', max_depth=20, splitter='best')
 
-    # Dùng cho chủ đề 5
-    # svm = SVC(kernel='poly',)
-    # svm.fit(xTrain, yTrain)
-    # svmsc = svm.predict(xValidate)
-    # sc = accuracy_score(yValidate, svmsc)
-    # print(sc)
-
     # Huấn luyện mô hình
     ID3_kfold.fit(xTrain, yTrain)
     CART_kfold.fit(xTrain, yTrain)

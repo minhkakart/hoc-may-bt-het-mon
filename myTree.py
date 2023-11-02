@@ -1,21 +1,22 @@
-import math
+from math import log
 import pandas
 from sklearn.model_selection import train_test_split
 
-
 class Node:
-    def __init__(self, name: str, attributes={}) -> None:
+    def __init__(self, name: str, branches={}) -> None:
         self.name = name
-        self.attributes = attributes
+        self.branches = branches
 
     def predict(self, data):
-        if len(self.attributes) == 0:
+
+        # Nếu node không có nhánh con thì trả về tên node (giá trị cần tìm)
+        if len(self.branches) == 0:
             return self.name
-        reduceData = dict(data)
-        del reduceData[self.name]
-        data_att_val = data[self.name]
-        next_node = self.attributes[data_att_val]
-        result = next_node.predict(reduceData)
+        
+
+        data_att_val = data[self.name]                  # Lấy ra tên nhánh cần đi tiếp từ data
+        next_node = self.branches[data_att_val]         # Lấy ra node của nhánh cần đi tiếp
+        result = next_node.predict(data)                # Đệ quy để duyệt tiếp trên nhánh đã chọn
         return result
 
 
@@ -85,15 +86,23 @@ class MyDecisionTreeClassifier():
     >>>     )
     '''
 
-    def __init__(self, attributes: list, x_train, y_train, criterion='entropy') -> None:
+    # Hàm khởi tạo
+    def __init__(self, attributes: list, x_train, y_train, criterion='entropy', max_depth=10) -> None:
+
+        ## Kiểm tra tính hợp lệ của dữ liệu khởi tạo
         if len(attributes) != len(x_train[0]):
             raise ValueError(
                 f'Parameters is not valid! size of attributes ({len(attributes)}) is different from number of data input ({len(x_train[0])})')
         if criterion not in ['entropy', 'gini']:
             raise ValueError('Invalid value for paramater criterion!')
+        
+        ## Tạo các thuộc tính của lớp
         self.attributes = attributes
         self.criterion = criterion
         self.yTrain = y_train
+        self.max_depth = max_depth
+
+        ## Xử lí bộ dữ liệu đầu vào
         self.xTrain = []
         if not str(type(x_train[0])) == "<class 'dict'>":
             for i in x_train:
@@ -106,64 +115,92 @@ class MyDecisionTreeClassifier():
 
     # Hàm tính giá trị Infomation gain hoặc Gini index
     def point(self, data, yClass, attribute_name):
-        props = set(map(lambda x: x[attribute_name], data))
-        Point = 0 if self.criterion == 'entropy' else 1
+
+        props = set(map(lambda x: x[attribute_name], data))     # Tạo danh sách tập các giá trị của attribute_name
+        Point = 0 if self.criterion == 'entropy' else 1         # Khởi tạo điểm ban đầu
+
+        ## Tính điểm của từng giá trị rồi cộng vào Point
         for i in props:
+
+            ## Lấy ra tập nhãn được phân lớp (y) tương ứng với từng điểm dữ liệu của prop
             prop_targets = []
             for index, val in enumerate(data):
                 if val[attribute_name] == i:
                     prop_targets.append(yClass[index])
-            prop_classes = set(prop_targets)
-            total_prop_target = len(prop_targets)
 
-            prop_point = 0
+            prop_classes = set(prop_targets)            # Tạo tập các lớp của prop
+            total_prop_target = len(prop_targets)       # Lấy số lượng 
+
+            prop_point = 0                              # Khởi tạo điểm entropy hoặc gini
+            # Tính entropy hoặc gini theo xác xuất của mỗi lớp
             for prop_class in prop_classes:
                 count_class = prop_targets.count(prop_class)
-                prop_point += -(count_class/total_prop_target)*math.log(count_class /
-                                                                        total_prop_target) if self.criterion == 'entropy' else (count_class/total_prop_target)**2
-            Point += total_prop_target / \
-                len(data)*prop_point if self.criterion == 'entropy' else - \
-                total_prop_target/len(data)*prop_point
-        return Point
+                prop_point += -(count_class/total_prop_target)*log(count_class/total_prop_target) if self.criterion == 'entropy' else (count_class/total_prop_target)**2
+            Point += (total_prop_target/len(data))*prop_point if self.criterion == 'entropy' else - (total_prop_target/len(data))*prop_point
+        
+        return Point        # Trả về H(x,S)
 
     # Hàm xây dựng cây quyết định
-    def buildTree(self, xData, yClass, attributes: list):
-        target_list = list(set(yClass))
+    def buildTree(self, xData, yClass, attributes: list, depth):
+        target_list = list(set(yClass))     # Lấy danh sách các nhóm được phân loại
+
+        ## Nếu danh sách nhóm chỉ có 1 phần tử
         if len(target_list) == 1:
-            return Node(target_list[0])
-        if len(attributes) == 0:
+            return Node(target_list[0])     # Trả về nút lá 
+        
+        ## Nếu không có thuộc tính nào để xét
+        if len(attributes) == 0 or depth >= self.max_depth:
+            
+            ## Đếm số lượng từng lớp (target) lưu vào count
             count = []
             for target in target_list:
                 count.append(yClass.count(target))
+
+            # Lấy ra vị trí tương ứng của lớp chiếm đa số
             target_max_index = count.index(max(count))
-            return Node(str(target_list[target_max_index]))
 
-        Point = []
+            return Node(str(target_list[target_max_index]))     # Trả về nút lá có tên là lớp chiếm da số
+
+        ## Tính điểm entropy hoặc gini của từng thuộc tính rồi lưu vào danh sách Points
+        Points = []
         for attribute_name in attributes:
-            Point.append(self.point(xData, yClass, attribute_name))
+            Points.append(self.point(xData, yClass, attribute_name))
 
-        min_point_attribute_name = attributes[Point.index(min(Point))]
+        # Lấy ra tên thuộc tính có điểm nhỏ nhất
+        min_point_attribute_name = attributes[Points.index(min(Points))]
+
+        # Lấy ra danh sách các giá trị của thuộc tính nhỏ nhất trong data
         list_att_props = set(map(lambda x: x[min_point_attribute_name], xData))
 
-        att_prop_nodes = {}
-        attributesReduce = list(attributes)
+        att_branches = {}       # Khởi tạo cấu trúc chứa các nhánh của node hiện tại
+
+        ## Tạo danh sách các thuộc tính còn lại (loại bỏ thuộc tính có điểm nhỏ nhất được tính bên trên)
+        attributesReduce = list(attributes)         
         attributesReduce.remove(min_point_attribute_name)
 
+        ## Đệ quy cho từng nhánh để tìm ra node tương ứng của mỗi nhánh
         for att_prop in list_att_props:
+
+            ## Tìm xData, yData (target) tương ứng của mỗi nhánh
             prop_data = []
             att_prop_targets = []
             for index, val in enumerate(xData):
                 if val[min_point_attribute_name] == att_prop:
                     prop_data.append(val)
                     att_prop_targets.append(yClass[index])
-            att_prop_nodes[str(att_prop)] = self.buildTree(
-                prop_data, att_prop_targets, attributesReduce)
-        return Node(min_point_attribute_name, att_prop_nodes)
+
+            # Thêm nhánh vào danh sách
+            att_branches[str(att_prop)] = self.buildTree(prop_data, att_prop_targets, attributesReduce, depth+1)
+        
+        # Kết thúc, trả về nút hiện tại
+        return Node(min_point_attribute_name, att_branches)
 
     def fit(self):
-        self.tree = self.buildTree(self.xTrain, self.yTrain, self.attributes)
+        self.tree = self.buildTree(self.xTrain, self.yTrain, self.attributes, 1)
 
     def predict(self, data: list):
+
+        ## Xử lí bộ dữ liệu đầu vào
         if not str(type(data[0])) == "<class 'dict'>":
             newData = []
             for i in data:
@@ -174,6 +211,7 @@ class MyDecisionTreeClassifier():
         else:
             newData = data
 
+        # Xử lí các dữ liệu gây lỗi
         predict_result = []
         for i in newData:
             try:
@@ -181,6 +219,7 @@ class MyDecisionTreeClassifier():
             except:
                 predict_result.extend(['err'])
 
+        # Trả về kết quả dự đoán
         return predict_result
 
 
@@ -190,18 +229,22 @@ try:
 except:
     data = pandas.read_csv('gianlanbaohiem.csv')
 
+## Loại bỏ một số cột gây nhiễu và lỗi
 data = data.drop(labels='policy_number', axis=1)
 data = data.drop(labels='policy_bind_date', axis=1)
 data = data.drop(labels='incident_location', axis=1)
+data = data.drop(labels='incident_date', axis=1)
 data = data.drop(labels='insured_hobbies', axis=1)
 data = data.drop(labels='months_as_customer', axis=1)
 
-
+# Lấy tên các thuộc tính (bỏ cột cuối là nhãn)
 columns = (data.columns.values)
-data_np = data.values
 atts = columns[:len(columns)-1]
 
-# Rời rạc dữ liệu
+# Lấy dữ liệu dạng numpy.array
+data_np = data.values
+
+# Xử lí rời rạc dữ liệu
 ENCODE_LABELS = ['one', 'two', 'three', 'four',
                  'five', 'six', 'seven', 'eight', 'nine', 'ten']
 enum_cols = enumerate(columns)
@@ -224,11 +267,12 @@ for (i, col) in enum_cols:
                         data_np[val, i] = ENCODE_LABELS[label_index]
                         break
 
+
 train, test = train_test_split(data_np, test_size=0.3, shuffle=True)
 x, y = train[:, :-1], train[:, -1]
 xt, yt = test[:, :-1], test[:, -1]
 
-mytree = MyDecisionTreeClassifier(attributes=atts, x_train=x, y_train=y)
+mytree = MyDecisionTreeClassifier(attributes=atts, x_train=x, y_train=y, max_depth=5)
 mytree.fit()
 
 pred = mytree.predict(xt)
@@ -241,4 +285,5 @@ for i in range(len(pred)):
     if pred[i] != 'err':
         if pred[i] == yt[i]:
             count += 1
-print('Score:', count/(len(pred)-pred.count('err')))
+print(f"Score: {count}/{(len(pred)-pred.count('err'))} = {count/(len(pred)-pred.count('err'))}")
+print('max depth =', mytree.max_depth)
