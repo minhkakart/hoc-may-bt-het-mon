@@ -70,8 +70,6 @@ for KFtrain, validate in kfold.split(xTRAIN, yTRAIN):
         mo_hinh_tot_nhat = CART_kfold
         thuat_toan_tot = 'CART'
 
-mo_hinh_tot_nhat.fit(xTRAIN, yTRAIN)
-
 # Dự đoán và tính điểm của mô hình tốt nhất trên tập test
 predict_test = mo_hinh_tot_nhat.predict(XTEST)
 score = int((accuracy_score(predict_test, YTEST))*10000)/10000
