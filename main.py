@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score #, recall_score, precision_score
 # from sklearn.svm import SVC
 
 global mo_hinh_tot_nhat
+global thuat_toan_tot
 
 # Đọc file dữ liệu
 try:
@@ -62,11 +63,14 @@ for KFtrain, validate in kfold.split(xTRAIN, yTRAIN):
     if(id3_accuracy_score > max_score):
         max_score = id3_accuracy_score
         mo_hinh_tot_nhat = ID3_kfold
+        thuat_toan_tot = 'ID3'
+
     if(cart_score > max_score):
         max_score = cart_score
         mo_hinh_tot_nhat = CART_kfold
-        # Nếu có thêm mô hình khác thì
-        # so sánh thêm
+        thuat_toan_tot = 'CART'
+
+mo_hinh_tot_nhat.fit(xTRAIN, yTRAIN)
 
 # Dự đoán và tính điểm của mô hình tốt nhất trên tập test
 predict_test = mo_hinh_tot_nhat.predict(XTEST)
@@ -106,8 +110,9 @@ def lay_du_lieu():
 
 # Hiển thị cửa sổ chính
 with dpg.window(tag='cua_so_chinh'):
-    dpg.add_button(label='Du doan', pos=(810, 90), callback=du_doan) # Thêm button dự đoán
+    dpg.add_button(label='Du doan', pos=(810, 120), callback=du_doan) # Thêm button dự đoán
     dpg.draw_text(text='Accuracy score = ' + str(score), pos=(800, 20), size=30)    # Thêm đoạn chữ hiển trị thang điểm đánh giá mô hình
+    dpg.draw_text(text='Thuat toan tot nhat: ' + thuat_toan_tot, pos=(800, 60), size=30)    # Thêm đoạn chữ hiển trị thuật toán tốt nhất
     dpg.add_text('Ket qua du doan:  ', pos=(810, 180), tag='kq')        # Thêm đoạn hiển thị kết quả dự đoán
     dpg.add_button(label='Lay du lieu mau', callback=lay_du_lieu)       # Thêm nút chọn ngẫu nhiên dữ liệu mẫu
 
